@@ -2,8 +2,9 @@
 #include <stdlib.h>
 #include "bigint.h"
 
-int main(int argc, char** argv) {
-
+int main() {
+    bigint* n = str2bigint("0");
+    printf("%s\n", bigint2str(n));
     return (EXIT_SUCCESS);
 }
 
