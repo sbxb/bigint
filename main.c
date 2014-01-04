@@ -3,8 +3,18 @@
 #include "bigint.h"
 
 int main() {
-    bigint* n = str2bigint("0");
-    printf("%s\n", bigint2str(n));
+    bigint* m = str2bigint("-242424242424242424242424242424242424242424242424242424242424242424242424242424242424242");
+    bigint* mm = clone(m);
+    
+    bigint* n = str2bigint("-959595959595959595959595959595959595959595959595959595959595959595959595959595");
+    bigint* nn = clone(n);
+    
+    release(m);
+    release(n);
+    
+    printf("%s\n", bigint2str(mm));
+    printf("%s\n", bigint2str(nn));
+    printf("%s\n", bigint2str(add(mm, nn)));
     return (EXIT_SUCCESS);
 }
 
