@@ -5,14 +5,10 @@
 #include <ctype.h>
 #include "bigint.h"
 
+// TODO make swap to guarantee (max, min) inside _abs_add, there is no need to make it multiple times before add() call
+
 bigint* str2bigint(const char* str) {
-    bigint* temp = malloc(sizeof(bigint));
-    
-    if (temp == NULL) {
-        fputs("ERROR: cannot allocate enough memory\n", stderr);
-        return NULL;
-    }
-    
+
     if (str == NULL || strlen(str) == 0) {
         fputs("ERROR: cannot convert empty string\n", stderr);
         return NULL;
@@ -52,17 +48,12 @@ bigint* str2bigint(const char* str) {
     while (*str == '0' && *str != '\0') // skipping leading zeros
         str++;
     
+    bigint* temp = NULL;
     if (strlen(str) == 0) { // 0 as a number
-        temp->data = NULL; // no need to allocate memory, 0 is stored as a sign)
-        temp->length = 1;
+        temp = _init_bigint(0);
         temp->sign = 0;
     } else { // some other number except 0
-        temp->length = strlen(str);
-        temp->data = malloc(sizeof(char) * (temp->length + 1 )); // reserve a place for a left bound element
-        if (temp->data == NULL) {
-            fputs("ERROR: cannot allocate enough memory\n", stderr);
-            return NULL;
-        }
+        temp = _init_bigint(strlen(str));
         temp->sign = (sign == -1) ? -1 : 1;
         unsigned char* q = temp->data + temp->length; // set pointer to the last element
         for( ; *str != '\0'; str++, --q) {
@@ -70,7 +61,6 @@ bigint* str2bigint(const char* str) {
             //printf("DEBUG: %d\n", *q);
         }
     }
-    
     return temp;
 }
 
@@ -78,6 +68,9 @@ char* bigint2str(const bigint* number) {
     if (number == NULL)
         return NULL;
 
+    if (number->sign == 0)
+        return "0";
+    
     int length = number->length + 1;
     if (number->sign == -1)
         length++;
@@ -94,25 +87,16 @@ char* bigint2str(const bigint* number) {
         p++;
     }
 
-    if (number->sign == 0) {
-        p[0] = '0';
-        p[1] = '\0';
-    } else {
-        unsigned int i;
-        for (i = number->length; i > 0; i--) {
-            *p++ = '0' + number->data[i];
-        }
-        *p = '\0';
+    unsigned int i;
+    for (i = number->length; i > 0; i--) {
+        *p++ = '0' + number->data[i];
     }
+    *p = '\0';
 
     return str;
 }
 
 bigint* add(const bigint* x, const bigint* y) {
-    if (x->sign * y->sign == -1) {
-        // TODO subtract
-        // (bigger - smaller), but remember to adjust the sign
-    }
     if (x == NULL || y == NULL)
         return NULL;
     
@@ -121,87 +105,68 @@ bigint* add(const bigint* x, const bigint* y) {
     else if (y->sign == 0)
         return clone(x);
     
-    // here comes real addition
-    bigint* sum = malloc(sizeof(bigint));
-    if (sum == NULL) {
-        fputs("ERROR: cannot allocate enough memory\n", stderr);
-        return NULL;
+    bigint* result = NULL;
+    
+    if (x->sign * y->sign == 1) {
+        result = _abs_add(x, y);
+        if (result != NULL)
+            result->sign = x->sign;
+    } else if (x->sign * y->sign == -1) {
+        result = _abs_subtract(x, y);
+        if (result != NULL)
+            result->sign = (abs_compare(x, y) >= 0) ? x->sign : y->sign;
     }
-    
-    sum->sign = x->sign;
-    //sum->length = (x->length > y->length) ? x->length + 1 : y->length + 1; // X3
-    sum->length = (x->length > y->length) ? x->length : y->length;
-    sum->data = malloc(sizeof(char) * (sum->length + 1));
-    
-    if (sum->data == NULL) {
-        fputs("ERROR: cannot allocate enough memory\n", stderr);
-        return NULL;
-    }
-    
-    const bigint * first;
-    const bigint * second;
-    
-    if (x->length > y->length) {
-        first = x;
-        second = y;
-    } else {
-        first = y;
-        second = x;
-    }
-    
-    unsigned char carry = 0;
-    
-    for (unsigned int i = 1; i < (first->length + 1); i++) {
-        unsigned char t = carry + first->data[i];
-        if (second->length >= i)
-            t += second->data[i];
-        sum->data[i] = t % 10;
-        carry = t / 10;
-    }
-    
-    if (carry > 0) {
-        unsigned char* old_data = sum->data;
-        sum->length++;
-        sum->data = malloc(sizeof(char) * (sum->length + 1));
-        if (sum->data == NULL) {
-            fputs("ERROR: cannot allocate enough memory\n", stderr);
-            return NULL;
-        }
-        memcpy(sum->data, old_data, sizeof(char) * (sum->length));
-        *(sum->data + sum->length) = carry; // last element, i.e. of highest-order
-        free(old_data);
-    }
-    
-    return sum;
+
+    return result;
 }
 
 bigint* subtract(const bigint* x, const bigint* y) {
-    if (x->sign * y->sign == -1) {
-        // TODO add
-        // remember to adjust the sign
+    
+    if (x == NULL || y == NULL)
+        return NULL;
+    
+    bigint* result = NULL;
+    
+    if (x->sign == 0) {
+        result = clone(y);
+        if (result != NULL)
+            result->sign = y->sign * -1;
+        return result;
+    } else if (y->sign == 0) {
+        return clone(x);
     }
     
-    return NULL; // TODO remove later
+    if (abs_compare(x, y) == 0 && x->sign == y->sign) {
+        result = _init_bigint(0);
+        if (result != NULL)
+            result->sign = 0;
+        return result;
+    }
+    
+    if (x->sign * y->sign == -1) {
+        result = _abs_add(x, y);
+        if (result != NULL)
+            result->sign = x->sign;
+        return result;
+    } else if (x->sign * y->sign == 1) {
+        result = _abs_subtract(x, y);
+        if (result != NULL)
+            result->sign = (abs_compare(x, y) > 0) ? x->sign : x->sign * -1;
+    }
+    
+    return result;
 }
 
 bigint* clone(const bigint* number) {
     if (number == NULL)
         return NULL;
     
-    bigint* copy = malloc(sizeof(bigint));
+    bigint* copy = _init_bigint(number->length);
     if (copy == NULL)
         return NULL;
     
-    copy->length = number->length;
     copy->sign = number->sign;
-    if (number->data == NULL)
-        copy->data = NULL;
-    else {
-        copy->data = malloc(sizeof(char) * (copy->length + 1)); // reserve a place for a left bound element
-        if (copy->data == NULL) {
-            fputs("ERROR: cannot allocate enough memory\n", stderr);
-            return NULL;
-        }
+    if (number->data != NULL && copy->data != NULL) {
         memcpy(copy->data, number->data, sizeof(char) * (copy->length + 1));
     }
     
@@ -209,7 +174,6 @@ bigint* clone(const bigint* number) {
 }
 
 int abs_compare(const bigint* x, const bigint* y) { // Only absolute values matter
-    
     // Process zero(s)
     if (x->sign == 0 && y->sign == 0)
         return 0;
@@ -246,3 +210,161 @@ void release(bigint* number) {
     }
 }
 
+// returns |x| + |y|
+bigint* _abs_add(const bigint* x, const bigint* y) {
+    if (abs_compare(x, y) < 0) {
+        const bigint * temp = x;
+        x = y;
+        y = temp;
+    }
+    
+    bigint* result = _init_bigint(x->length);
+    if (result == NULL)
+        return result;
+    
+    unsigned char carry = 0;
+    for (unsigned int i = 1; i < (x->length + 1); i++) {
+        unsigned char t = carry + x->data[i];
+        if (y->length >= i)
+            t += y->data[i];
+        result->data[i] = t % 10;
+        carry = t / 10;
+    }
+    
+    if (carry > 0) {
+        unsigned char* old_data = result->data;
+        result->length++;
+        result->data = malloc(sizeof(char) * (result->length + 1));
+        if (result->data == NULL) {
+            fputs("ERROR: cannot allocate enough memory\n", stderr);
+            return NULL;
+        }
+        memcpy(result->data, old_data, sizeof(char) * (result->length));
+        *(result->data + result->length) = carry; // last element, i.e. of the highest order
+        free(old_data);
+    }
+    
+    return result;
+}
+
+// returns ||x| - |y||
+bigint* _abs_subtract(const bigint* x, const bigint* y) {
+    // process equal ?
+    if (abs_compare(x, y) < 0) {
+        const bigint * temp = x;
+        x = y;
+        y = temp;
+    }
+    
+    bigint* result = _init_bigint(x->length);
+    if (result == NULL)
+        return result;
+    
+    unsigned char carry = 0;
+    for (unsigned int i = 1; i < (x->length + 1); i++) {
+        if (y->length >= i) {
+            if (x->data[i] - carry >= y->data[i]) {
+                result->data[i] = x->data[i] - carry - y->data[i];
+                carry = 0;
+            } else {
+                result->data[i] = 10 + x->data[i] - carry - y->data[i];
+                carry = 1;
+            }
+        } else {
+            if (x->data[i] - carry >= 0) {
+                result->data[i] = x->data[i] - carry;
+                carry = 0;
+            } else {
+                result->data[i] = 10 + x->data[i] - carry;
+                carry = 1;
+            }
+        }
+    }
+    
+    unsigned char * p = result->data + result->length;
+    while (*p == 0)
+        p--; //skipping leading zeroes
+    if (p - result->data < result->length) {
+        unsigned char* old_data = result->data;
+        result->length = p - result->data;
+        result->data = malloc(sizeof(char) * (result->length + 1));
+        if (result->data == NULL) {
+            fputs("ERROR: cannot allocate enough memory\n", stderr);
+            return NULL;
+        }
+        memcpy(result->data, old_data, sizeof(char) * (result->length + 1));
+        free(old_data);
+    }
+    
+    return result;    
+}
+
+// returns |x| * |y|
+bigint* _abs_multiply(const bigint* x, const bigint* y) {
+    if (abs_compare(x, y) < 0) {
+        const bigint * temp = x;
+        x = y;
+        y = temp;
+    }
+    
+    bigint* result = _init_bigint(x->length + y->length);
+    if (result == NULL)
+        return NULL;
+    
+    bigint* tbuffer = _init_bigint(x->length + 1);
+    if (tbuffer == NULL)
+        return NULL;
+    tbuffer->sign = 1;
+    unsigned char carry;
+    unsigned int k;
+    unsigned int rshift = 1;
+    // TODO skip multiplying by zero, but agjust rshift!
+    for (unsigned int i = 1; i < (y->length + 1); i++) {
+        carry = 0;
+        k = 1;
+        for (unsigned int j = 1; j < (x->length + 1); j++) {
+            unsigned char t = x->data[j] * y->data[i] + carry;
+            tbuffer->data[k++] = t % 10;
+            carry = t / 10;
+        }
+        if (carry > 0) {
+            tbuffer->data[k] = carry;
+            carry = 0;
+        }
+printf("%s\n", bigint2str(tbuffer));
+        // add buffer to result, keep in mind shift
+        carry = 0;
+        for (unsigned int i = 1; i < (tbuffer->length + 1); i++) {
+            unsigned char t = carry + tbuffer->data[i] + result->data[i+rshift];
+            result->data[i+rshift] = t % 10;
+            carry = t / 10;
+        }
+        if (carry > 0) {
+            result->data[i+rshift] = carry;
+            carry = 0;
+        }
+        rshift++;
+        memset(tbuffer->data, 0, sizeof (char) * (tbuffer->length + 1));
+    }
+    return result;
+}
+
+bigint* _init_bigint(unsigned int length) {
+    bigint* number = malloc(sizeof(bigint));
+    if (number == NULL) {
+        fputs("ERROR: cannot allocate enough memory\n", stderr);
+        return NULL;
+    }
+    number->length = length;
+    if (length > 0) {
+        number->data = malloc(sizeof(char) * (number->length + 1));
+        if (number->data == NULL) {
+            fputs("ERROR: cannot allocate enough memory\n", stderr);
+            return NULL;
+        }
+        memset(number->data, 0, sizeof(char) * (number->length + 1));
+    } else {
+        number->data = NULL; // no need to allocate memory, 0 is stored as a sign
+    }
+    return number;
+}

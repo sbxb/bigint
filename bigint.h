@@ -14,6 +14,8 @@ bigint* subtract(const bigint* x, const bigint* y);
 bigint* clone(const bigint* number);
 int abs_compare(const bigint* x, const bigint* y);
 void release(bigint* number);
-//bigint* _abs_add(const bigint* x, const bigint* y);
-//bigint* _abs_subtract(const bigint* x, const bigint* y);
+bigint* _abs_add(const bigint* x, const bigint* y);
+bigint* _abs_subtract(const bigint* x, const bigint* y);
+bigint* _abs_multiply(const bigint* x, const bigint* y);
+bigint* _init_bigint(unsigned int length);
 #endif	/* BIGINT_H */

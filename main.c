@@ -3,10 +3,10 @@
 #include "bigint.h"
 
 int main() {
-    bigint* m = str2bigint("-242424242424242424242424242424242424242424242424242424242424242424242424242424242424242");
+    bigint* m = str2bigint("12345678901234567890123456789");
     bigint* mm = clone(m);
     
-    bigint* n = str2bigint("-959595959595959595959595959595959595959595959595959595959595959595959595959595");
+    bigint* n = str2bigint("-987654321987654329");
     bigint* nn = clone(n);
     
     release(m);
@@ -14,7 +14,8 @@ int main() {
     
     printf("%s\n", bigint2str(mm));
     printf("%s\n", bigint2str(nn));
-    printf("%s\n", bigint2str(add(mm, nn)));
+    printf("+ : %s\n", bigint2str(add(mm, nn)));
+    printf("- : %s\n", bigint2str(subtract(mm, nn)));
     return (EXIT_SUCCESS);
 }
 
