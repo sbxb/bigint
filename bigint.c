@@ -5,8 +5,6 @@
 #include <ctype.h>
 #include "bigint.h"
 
-// TODO make swap to guarantee (max, min) inside _abs_add, there is no need to make it multiple times before add() call
-
 bigint* str2bigint(const char* str) {
 
     if (str == NULL || strlen(str) == 0) {
@@ -36,7 +34,7 @@ bigint* str2bigint(const char* str) {
         return NULL;
     }
     
-    signed short sign = 0;
+    int sign = 0;
     
     if (str[0] == '-') {
         sign = -1;
@@ -157,6 +155,17 @@ bigint* subtract(const bigint* x, const bigint* y) {
     return result;
 }
 
+bigint* multiply(const bigint* x, const bigint* y) {
+    if (x->sign == 0 || y->sign == 0)
+        return str2bigint("0"); // TODO or use a traditional method???
+    
+    bigint* result = _abs_multiply(x, y);
+    if (result != NULL)
+        result->sign = x->sign * y->sign;
+    // TODO remove leading zero by decrementing result->length ???
+    return result;
+}
+
 bigint* clone(const bigint* number) {
     if (number == NULL)
         return NULL;
@@ -173,7 +182,7 @@ bigint* clone(const bigint* number) {
     return copy;
 }
 
-int abs_compare(const bigint* x, const bigint* y) { // Only absolute values matter
+int abs_compare(const bigint* x, const bigint* y) {
     // Process zero(s)
     if (x->sign == 0 && y->sign == 0)
         return 0;
@@ -249,9 +258,9 @@ bigint* _abs_add(const bigint* x, const bigint* y) {
 
 // returns ||x| - |y||
 bigint* _abs_subtract(const bigint* x, const bigint* y) {
-    // process equal ?
+    // TODO process equal numbers here ?
     if (abs_compare(x, y) < 0) {
-        const bigint * temp = x;
+        const bigint* temp = x;
         x = y;
         y = temp;
     }
@@ -281,7 +290,7 @@ bigint* _abs_subtract(const bigint* x, const bigint* y) {
         }
     }
     
-    unsigned char * p = result->data + result->length;
+    unsigned char* p = result->data + result->length;
     while (*p == 0)
         p--; //skipping leading zeroes
     if (p - result->data < result->length) {
@@ -302,7 +311,7 @@ bigint* _abs_subtract(const bigint* x, const bigint* y) {
 // returns |x| * |y|
 bigint* _abs_multiply(const bigint* x, const bigint* y) {
     if (abs_compare(x, y) < 0) {
-        const bigint * temp = x;
+        const bigint* temp = x;
         x = y;
         y = temp;
     }
@@ -317,7 +326,7 @@ bigint* _abs_multiply(const bigint* x, const bigint* y) {
     tbuffer->sign = 1;
     unsigned char carry;
     unsigned int k;
-    unsigned int rshift = 1;
+    unsigned int rshift = 0;
     // TODO skip multiplying by zero, but agjust rshift!
     for (unsigned int i = 1; i < (y->length + 1); i++) {
         carry = 0;
@@ -331,7 +340,7 @@ bigint* _abs_multiply(const bigint* x, const bigint* y) {
             tbuffer->data[k] = carry;
             carry = 0;
         }
-printf("%s\n", bigint2str(tbuffer));
+
         // add buffer to result, keep in mind shift
         carry = 0;
         for (unsigned int i = 1; i < (tbuffer->length + 1); i++) {
@@ -344,6 +353,7 @@ printf("%s\n", bigint2str(tbuffer));
             carry = 0;
         }
         rshift++;
+
         memset(tbuffer->data, 0, sizeof (char) * (tbuffer->length + 1));
     }
     return result;

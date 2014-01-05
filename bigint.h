@@ -4,13 +4,14 @@
 typedef struct {
     unsigned char* data;
     unsigned int length;
-    signed short sign;
+    int sign;
 } bigint;
 
 bigint* str2bigint(const char* str);
 char* bigint2str(const bigint* number);
 bigint* add(const bigint* x, const bigint* y);
 bigint* subtract(const bigint* x, const bigint* y);
+bigint* multiply(const bigint* x, const bigint* y);
 bigint* clone(const bigint* number);
 int abs_compare(const bigint* x, const bigint* y);
 void release(bigint* number);
